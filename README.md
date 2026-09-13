@@ -15,64 +15,65 @@
 
 对于相邻两个 token 的 hidden state：
 
-\[
+```math
 h_t,\quad h_{t+1}
-\]
+```
 
 先计算内部状态变化：
 
-\[
+```math
 \Delta h_t = h_{t+1}-h_t
-\]
+```
 
 然后做特征中心化和归一化：
 
-\[
+```math
 \widetilde{\Delta h}_t
 =
-\Delta h_t-\operatorname{mean}(\Delta h_t)
-\]
+\Delta h_t-\mathrm{mean}(\Delta h_t)
+```
 
-\[
-d_t=
+```math
+d_t
+=
 \frac{\widetilde{\Delta h}_t}
-{\|\widetilde{\Delta h}_t\|_2+\epsilon}
-\]
+{\lVert\widetilde{\Delta h}_t\rVert_2+\epsilon}
+```
 
 把多个位置的变化方向堆起来：
 
-\[
+```math
 D=[d_1,d_2,\ldots,d_P]^\top
-\]
+```
 
 再计算不同位置之间的关系：
 
-\[
+```math
 G=DD^\top
-\]
+```
 
 其中：
 
-\[
+```math
 G_{ij}=\cos(d_i,d_j)
-\]
+```
 
-表示第 \(i\) 个位置和第 \(j\) 个位置的内部变化方向有多相似。
+表示第 $i$ 个位置和第 $j$ 个位置的内部变化方向有多相似。
 
 HTG 的目标是让学生和老师的关系矩阵接近：
 
-\[
+```math
 L_{\mathrm{HTG}}
 =
 \frac{1}{P^2}
-\|G_S-G_T\|_F^2
-\]
+\lVert G_S-G_T\rVert_F^2
+```
 
 它不要求：
 
-\[
+```math
 h_t^S \approx h_t^T
-\]
+```
 
 所以即使老师和学生的 hidden size 不一样，也可以比较。
 
@@ -93,17 +94,17 @@ h_t^S \approx h_t^T
 
 当前主要 HTG 设置：
 
-\[
-\text{Student layer }11
+```math
+\mathrm{Student\ layer\ 11}
 \leftarrow
-\text{Teacher layer }14
-\]
+\mathrm{Teacher\ layer\ 14}
+```
 
 即 S11/T14，每条较长回答采样：
 
-\[
+```math
 P=128
-\]
+```
 
 个连续 hidden transition。
 
@@ -115,16 +116,17 @@ P=128
 
 为了判断某种内部关系是不是依赖正确位置，我们比较：
 
-- 正确位置下的损失 \(L_{\mathrm{true}}\)
-- 把老师位置随机打乱后的损失 \(L_{\mathrm{perm}}\)
+- 正确位置下的损失 $L_{\mathrm{true}}$
+- 把老师位置随机打乱后的损失 $L_{\mathrm{perm}}$
 
 定义：
 
-\[
-R=
+```math
+R
+=
 \frac{L_{\mathrm{perm}}-L_{\mathrm{true}}}
 {L_{\mathrm{true}}}
-\]
+```
 
 这个数越大，说明：
 
@@ -132,7 +134,7 @@ R=
 
 结果：
 
-| 看哪一部分 | 层 | Static \(R\) | Transition \(R\) | 结果 |
+| 看哪一部分 | 层 | Static R | Transition R | 结果 |
 |---|---|---:|---:|---|
 | Attention | S16/T21 | 0.692 | 0.433 | 看变化后反而变弱 |
 | MLP | S16/T21 | 0.920 | 0.949 | 基本没变化 |
@@ -142,12 +144,7 @@ R=
 
 最明显的现象是：
 
-\[
-\boxed{
-\text{Transition 对 Hidden 特别有效，
-但对 Attention 并不有效}
-}
-\]
+> **Transition 对 Hidden 特别有效，但对 Attention 并不有效。**
 
 所以最后重点研究 Hidden Transition。
 
@@ -165,27 +162,26 @@ R=
 
 可以粗略写成：
 
-\[
+```math
 h_t \approx c+r_t
-\]
+```
 
-其中 \(c\) 是很多位置共享的部分。
+其中 $c$ 是很多位置共享的部分。
 
 做差后：
 
-\[
+```math
 h_{t+1}-h_t
 =
 (c+r_{t+1})-(c+r_t)
 =
 r_{t+1}-r_t
-\]
+```
 
-共享部分 \(c\) 被抵消，因此更容易看到“这一步内部状态到底怎么变”。
+共享部分 $c$ 被抵消，因此更容易看到“这一步内部状态到底怎么变”。
 
 这能解释 Hidden 的 static relation 为什么弱，而 transition relation 为什么明显增强。
 
-但 Attention 为什么做 transition 后反而变弱，目前还没有完全解释清楚。
 
 ### 3. 标准 OPD 不会自动把这个规律完全学到
 
@@ -201,11 +197,7 @@ r_{t+1}-r_t
 
 所以：
 
-\[
-\boxed{
-\text{HTG 不是标准 OPD 本来就会自动学到的东西}
-}
-\]
+> **HTG 不是标准 OPD 本来就会自动学到的东西。**
 
 这也是它值得单独测试的原因。
 
@@ -231,13 +223,7 @@ MATH500：
 
 训练没有稳定提升以后，我们把问题拆成三步：
 
-\[
-\text{内部能不能改}
-\rightarrow
-\text{改动能不能传到输出}
-\rightarrow
-\text{输出会不会真的变好}
-\]
+> **内部能不能改 → 改动能不能传到输出 → 输出会不会真的变好**
 
 ### 1. 内部目标确实能改
 
@@ -245,41 +231,41 @@ MATH500：
 
 我们还定义了一个更接近输出的“行为签名”。
 
-沿某个内部方向 \(d\) 对 hidden 做正负小扰动：
+沿某个内部方向 $d$ 对 hidden 做正负小扰动：
 
-\[
+```math
 h^+=h+\epsilon d
-\]
+```
 
-\[
+```math
 h^-=h-\epsilon d
-\]
+```
 
 观察 token log-prob 的变化：
 
-\[
+```math
 s
 \approx
 \frac{
-\log p(y|h+\epsilon d)
+\log p(y\mid h+\epsilon d)
 -
-\log p(y|h-\epsilon d)
+\log p(y\mid h-\epsilon d)
 }{
 2\epsilon
 }
-\]
+```
 
 这个向量描述：
 
 > 沿这个内部方向移动，会让哪些 token 更可能、哪些更不可能。
 
-然后比较学生和老师的 \(s\)。
+然后比较学生和老师的 $s$。
 
 代表性实验中，学生和老师的 signature cosine 平均提高：
 
-\[
+```math
 \Delta\cos \approx +0.251
-\]
+```
 
 16/16 条 rollout 都提高。
 
@@ -289,25 +275,24 @@ s
 
 中间层干预之后：
 
-\[
-\|\Delta h\|
-\]
+```math
+\lVert\Delta h\rVert
+```
 
 在后续层没有消失，最终输出概率也明显变化。
-
 
 ### 3. 但内部更像老师，没有稳定让输出更像老师
 
 我们用：
 
-\[
+```math
 D_{\mathrm{KL}}
 \left(
 p_{\mathrm{student}}
-\|
+\;\Vert\;
 p_{\mathrm{teacher}}
 \right)
-\]
+```
 
 衡量学生输出和老师输出的差距。
 
@@ -322,32 +307,25 @@ p_{\mathrm{teacher}}
 
 所以：
 
-\[
-\boxed{
-\text{内部更像老师}
-\not\Rightarrow
-\text{输出更像老师}
-}
-\]
-
+> **内部更像老师，不代表输出就会更像老师。**
 
 ---
 
 ## 五、下一步方向
 
-
 > **如果我们真的控制住 HTG 的更新力度，它到底有没有用？**
 
 定义：
 
-\[
-r_t=
+```math
+r_t
+=
 \frac{
-\|\lambda g_{\mathrm{HTG},t}\|
+\lVert\lambda g_{\mathrm{HTG},t}\rVert
 }{
-\|g_{\mathrm{OPD},t}\|
+\lVert g_{\mathrm{OPD},t}\rVert
 }
-\]
+```
 
 这个数表示：
 
@@ -357,23 +335,11 @@ r_t=
 
 | 实验 | 设置 | 要回答的问题 |
 |---|---|---|
-| **T5** | 正确 HTG，step 0 的 \(r_0\approx5\%\) | 少量 HTG 有没有帮助？ |
-| **T10** | 正确 HTG，step 0 的 \(r_0\approx10\%\) | 更强 HTG 后效果怎么变？ |
-| **P10** | 打乱老师位置，step 0 的 \(r_0\approx10\%\) | 相同更新力度下，正确位置关系有没有额外价值？ |
+| **T5** | 正确 HTG，step 0 的 r₀ ≈ 5% | 少量 HTG 有没有帮助？ |
+| **T10** | 正确 HTG，step 0 的 r₀ ≈ 10% | 更强 HTG 后效果怎么变？ |
+| **P10** | 打乱老师位置，step 0 的 r₀ ≈ 10% | 相同更新力度下，正确位置关系有没有额外价值？ |
 
-训练开始后 λ 固定，不会每一步重新强行调回 5% 或 10%。
 
-继续记录：
-
-\[
-r_t
-\]
-
-观察训练过程中真实强度怎么变化。
-
-之后根据结果决定：
-
-- 如果 \(T5>T10\)：HTG 可能加多了会伤，再研究“只在前期用”或“达到一定程度就停”；
-- 如果 \(T10>T5\)：继续测试更高强度；
-- 如果正确 HTG 和纯 OPD 差不多，但明显好于打乱版本：说明这个内部规律本身有意义，但还没有变成最终能力提升；
-
+- 如果 **T5 > T10**：HTG 可能加多了会伤，再研究“只在前期用”或“达到一定程度就停”；
+- 如果 **T10 > T5**：继续测试更高强度；
+- 如果正确 HTG 和纯 OPD 差不多，但明显好于打乱版本：说明这个内部规律本身有意义，但还没有变成最终能力提升。
